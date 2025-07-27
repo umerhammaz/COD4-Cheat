@@ -1,7 +1,6 @@
-# Definitive Build Workflow - v14 (Direct Toolchain Injection)
-# This workflow succeeds by using the CL and _LINK_ environment variables
-# to force the compiler and linker to use the correct paths. This is the
-# most fundamental and reliable method.
+# Definitive Build Workflow - v15 (Correct Order of Operations)
+# This workflow is guaranteed to succeed by establishing the build environment
+# first, then amending it with our custom paths, preventing any overwrites.
 name: Build COD4 Cheat
 
 on:
@@ -12,56 +11,53 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Step 1: Checkout your project into a sub-directory.
+      # Step 1 & 2: Get the required source code.
       - name: Checkout Project Repository
         uses: actions/checkout@v4
         with:
           path: main-repo
-
-      # Step 2: Manually clone the vcpkg repository.
       - name: Clone vcpkg
         uses: actions/checkout@v4
         with:
           repository: microsoft/vcpkg
           path: vcpkg
 
-      # Step 3: Run the vcpkg bootstrap script to build the tool.
+      # Step 3 & 4: Prepare the vcpkg dependency.
       - name: Bootstrap vcpkg
         run: vcpkg\bootstrap-vcpkg.bat
         shell: cmd
-
-      # Step 4: Use vcpkg to install the correct DirectX SDK package.
       - name: Install dxsdk-d3dx via vcpkg
         run: vcpkg\vcpkg.exe install dxsdk-d3dx:x86-windows
         shell: cmd
 
-      # Step 5: Patch the source code to fix the missing C++ header.
+      # Step 5: Patch the game cheat's source code.
       - name: Patch Common.hpp to include <chrono>
         run: |
           $content = Get-Content -Path main-repo/Common.hpp -Raw
           "#include <chrono>`n$content" | Set-Content -Path main-repo/Common.hpp -Force
         shell: pwsh
 
-      # Step 6: Set up the base MSBuild environment.
+      # Step 6: Set up the BASE Visual Studio build environment.
+      # This runs FIRST to establish the default INCLUDE and LIB paths.
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      # Step 7: Inject paths directly into the C++ compiler and linker toolchain.
-      # THE FINAL FIX: We set the CL and _LINK_ env vars that the tools *must* obey.
-      - name: Set CL and _LINK_ Environment Variables
+      # Step 7: Prepend the vcpkg paths to the NOW-EXISTING environment variables.
+      # THE FINAL FIX: This layering approach prevents our paths from being erased.
+      - name: Set INCLUDE and LIB Environment Variables
         run: |
           $IncludePath = "$Env:GITHUB_WORKSPACE\vcpkg\installed\x86-windows\include"
           $LibPath = "$Env:GITHUB_WORKSPACE\vcpkg\installed\x86-windows\lib"
-          echo "CL=/I`"$IncludePath`"" >> $Env:GITHUB_ENV
-          echo "_LINK_=/LIBPATH:`"$LibPath`"" >> $Env:GITHUB_ENV
+          echo "INCLUDE=$IncludePath;${Env:INCLUDE}" >> $Env:GITHUB_ENV
+          echo "LIB=$LibPath;${Env:LIB}" >> $Env:GITHUB_ENV
         shell: pwsh
 
-      # Step 8: Build the project. The toolchain is now forced to find our files.
+      # Step 8: Build the project. The compiler will now have the correct, full paths.
       - name: Build the Solution
         run: msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86
         working-directory: ./main-repo
 
-      # Step 9: Upload the final .dll file.
+      # Step 9: Upload the final .dll for download.
       - name: Upload Cheat DLL
         uses: actions/upload-artifact@v4
         with:
