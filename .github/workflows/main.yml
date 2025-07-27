@@ -1,49 +1,44 @@
+# Version 2 - Final Build
 name: Build COD4 Cheat
 
 on:
-  # Allows you to run this workflow manually from the Actions tab
+  # This enables the manual "Run workflow" button in the Actions tab
   workflow_dispatch:
 
 jobs:
   build:
-    # Use a Windows virtual machine to build the project
     runs-on: windows-latest
 
     steps:
-      # Step 1: Check out the repository's code
+      # Step 1: Get your source code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Create a vcpkg manifest to declare dependencies
-      # THE FIX for d3dx9.h: We tell vcpkg that our project needs the d3dx9 library.
-      - name: Create vcpkg.json
+      # Step 2: Create a manifest file to declare the d3dx9 dependency
+      - name: Create vcpkg.json for d3dx9 dependency
         run: echo '{ "dependencies": [ "d3dx9" ] }' > vcpkg.json
 
-      # Step 3: Run vcpkg to install the declared dependencies
-      # This action will download, build, and integrate d3dx9 automatically.
+      # Step 3: Use vcpkg to automatically install d3dx9
       - name: Install Dependencies via vcpkg
         uses: microsoft/vcpkg-action@v5
         with:
           vcpkgDirectory: ${{ runner.tool_cache }}/vcpkg
           vcpkgJsonGlob: '**/vcpkg.json'
 
-      # Step 4: Patch the source code to fix the missing header
-      # THE FIX for chrono_literals: We add the missing #include to Common.hpp.
+      # Step 4: Patch the source code to fix the missing <chrono> include
       - name: Patch Common.hpp to include <chrono>
         run: |
           $content = Get-Content -Path Common.hpp -Raw
           "#include <chrono>`n$content" | Set-Content -Path Common.hpp -Force
         shell: pwsh
 
-      # Step 5: Build the Visual Studio solution
-      # MSBuild will now automatically find the d3dx9 library provided by vcpkg.
+      # Step 5: Build the project using MSBuild
       - name: Build the Solution
         run: msbuild.exe "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86
 
-      # Step 6: Upload the compiled .dll as a downloadable artifact
+      # Step 6: Upload the final .dll file for you to download
       - name: Upload Cheat DLL
         uses: actions/upload-artifact@v4
         with:
           name: Built-Cheat-DLL
           path: Release/DX9-Cheat-Base.dll
-
