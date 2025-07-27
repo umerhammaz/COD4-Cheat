@@ -1,6 +1,5 @@
-# Definitive Build Workflow - v11 (Verified Package Name)
-# This workflow uses the correct vcpkg package name 'dxsdk-d3dx' as verified
-# against the official vcpkg repository.
+# Definitive Build Workflow - v12 (Corrected Relative Path)
+# This version fixes the path to vcpkg from within the working-directory.
 name: Build COD4 Cheat
 
 on:
@@ -29,8 +28,7 @@ jobs:
         run: vcpkg\bootstrap-vcpkg.bat
         shell: cmd
 
-      # Step 4: Use vcpkg to install the DirectX SDK helper library.
-      # THE DEFINITIVE FIX: Using the correct, verified package name 'dxsdk-d3dx'.
+      # Step 4: Use vcpkg to install the correct DirectX SDK package.
       - name: Install dxsdk-d3dx via vcpkg
         run: vcpkg\vcpkg.exe install dxsdk-d3dx:x86-windows
         shell: cmd
@@ -47,9 +45,10 @@ jobs:
         uses: microsoft/setup-msbuild@v1.1
 
       # Step 7: Build the project, explicitly passing the required paths.
+      # THE FIX: Correcting the relative path from './vcpkg' to '../vcpkg'.
       - name: Build the Solution
         run: |
-          $vcpkgRoot = Convert-Path ./vcpkg
+          $vcpkgRoot = Convert-Path ../vcpkg
           $includePath = "$vcpkgRoot/installed/x86-windows/include"
           $libPath = "$vcpkgRoot/installed/x86-windows/lib"
           msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86 /p:AdditionalIncludeDirectories="$includePath" /p:AdditionalLibraryDirectories="$libPath"
