@@ -1,0 +1,32 @@
+name: Build COD4 Cheat
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Use a Windows virtual machine to build the project
+    runs-on: windows-latest
+
+    steps:
+      # Step 1: Check out the repository's code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up MSBuild (the Visual Studio build tool)
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
+
+      # Step 3: Build the Visual Studio solution
+      # We target the .sln file directly in Release mode for the x86 platform.
+      - name: Build the Solution
+        run: msbuild.exe "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86
+
+      # Step 4: Upload the compiled .dll as a downloadable artifact
+      # The output DLL is typically found in the "Release" folder for an x86 build.
+      - name: Upload Cheat DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Built-Cheat-DLL
+          path: Release/DX9-Cheat-Base.dll
