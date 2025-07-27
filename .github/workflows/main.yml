@@ -1,4 +1,6 @@
-# Definitive Build Workflow - v10 (Correct Package Name)
+# Definitive Build Workflow - v11 (Verified Package Name)
+# This workflow uses the correct vcpkg package name 'dxsdk-d3dx' as verified
+# against the official vcpkg repository.
 name: Build COD4 Cheat
 
 on:
@@ -27,10 +29,10 @@ jobs:
         run: vcpkg\bootstrap-vcpkg.bat
         shell: cmd
 
-      # Step 4: Use vcpkg to install the DirectX SDK.
-      # THE FINAL FIX: Using the correct package name 'directx-sdk'.
-      - name: Install DirectX SDK via vcpkg
-        run: vcpkg\vcpkg.exe install directx-sdk:x86-windows
+      # Step 4: Use vcpkg to install the DirectX SDK helper library.
+      # THE DEFINITIVE FIX: Using the correct, verified package name 'dxsdk-d3dx'.
+      - name: Install dxsdk-d3dx via vcpkg
+        run: vcpkg\vcpkg.exe install dxsdk-d3dx:x86-windows
         shell: cmd
 
       # Step 5: Patch the source code to fix the missing C++ header.
