@@ -1,5 +1,4 @@
-# Definitive Build Workflow - v5 (Manual vcpkg Integration)
-# This workflow has been verified and abandons the failing vcpkg-action.
+# Definitive Build Workflow - v6 (Corrected YAML Syntax)
 name: Build COD4 Cheat
 
 on:
@@ -10,11 +9,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Step 1: Get your project's source code.
+      # Step 1: Get your project's source code into a sub-directory.
       - name: Checkout Project Repository
         uses: actions/checkout@v4
         with:
-          path: main-repo # Checkout to a specific subdirectory
+          path: main-repo
 
       # Step 2: Manually clone the vcpkg repository.
       - name: Clone vcpkg
@@ -28,12 +27,14 @@ jobs:
         run: vcpkg/bootstrap-vcpkg.bat
         shell: cmd
 
-      # Step 4: Create the vcpkg.json manifest file in your project directory.
+      # Step 4: Create the vcpkg.json manifest file.
+      # THE FIX: Using a literal block '|' to prevent YAML syntax errors.
       - name: Create vcpkg.json for d3dx9 dependency
-        run: echo '{ "dependencies": [ "d3dx9" ], "builtin-baseline": "34de2155b9534a69620719462785501d51a6669c" }' > main-repo/vcpkg.json
+        run: |
+          echo '{ "dependencies": [ "d3dx9" ], "builtin-baseline": "34de2155b9534a69620719462785501d51a6669c" }' > main-repo/vcpkg.json
         shell: pwsh
 
-      # Step 5: Patch your source code to fix the missing <chrono> header.
+      # Step 5: Patch your source code to fix the missing C++ header.
       - name: Patch Common.hpp to include <chrono>
         run: |
           $content = Get-Content -Path main-repo/Common.hpp -Raw
@@ -44,8 +45,7 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      # Step 7: Build the project.
-      # The VcpkgEnableManifest flag tells MSBuild to automatically find and use vcpkg.
+      # Step 7: Build the project using the modern MSBuild-vcpkg integration.
       - name: Build the Solution
         run: msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86 /p:VcpkgEnableManifest=true
         working-directory: ./main-repo
