@@ -1,5 +1,4 @@
-# Definitive Build Workflow - v8 (Manual Path Injection)
-# This workflow abandons automatic integration and manually injects the dependency paths.
+# Definitive Build Workflow - v9 (Correct Path Separators)
 name: Build COD4 Cheat
 
 on:
@@ -16,21 +15,23 @@ jobs:
         with:
           path: main-repo
 
-      # Step 2: Clone the vcpkg repository.
+      # Step 2: Manually clone the vcpkg repository.
       - name: Clone vcpkg
         uses: actions/checkout@v4
         with:
           repository: microsoft/vcpkg
           path: vcpkg
 
-      # Step 3: Run the vcpkg bootstrap script to compile the tool.
+      # Step 3: Run the vcpkg bootstrap script.
+      # THE FIX: Using the correct Windows path separator '\' for the cmd shell.
       - name: Bootstrap vcpkg
-        run: vcpkg/bootstrap-vcpkg.bat
+        run: vcpkg\bootstrap-vcpkg.bat
         shell: cmd
 
-      # Step 4: Use vcpkg to install the d3dx9 library for the x86 platform.
+      # Step 4: Use vcpkg to install the d3dx9 library.
+      # THE FIX: Using the correct Windows path separator '\' for the cmd shell.
       - name: Install d3dx9 via vcpkg
-        run: vcpkg/vcpkg.exe install d3dx9:x86-windows
+        run: vcpkg\vcpkg.exe install d3dx9:x86-windows
         shell: cmd
 
       # Step 5: Patch the source code to fix the missing C++ header.
@@ -45,7 +46,6 @@ jobs:
         uses: microsoft/setup-msbuild@v1.1
 
       # Step 7: Build the project, explicitly passing the required paths.
-      # THE FIX: We are manually injecting the include and library directories.
       - name: Build the Solution
         run: |
           $vcpkgRoot = Convert-Path ./vcpkg
