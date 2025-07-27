@@ -1,5 +1,5 @@
-# Definitive Build Workflow - v7 (Explicit VCPKG_ROOT)
-# This version is guaranteed to work by explicitly linking MSBuild to our vcpkg instance.
+# Definitive Build Workflow - v8 (Manual Path Injection)
+# This workflow abandons automatic integration and manually injects the dependency paths.
 name: Build COD4 Cheat
 
 on:
@@ -10,29 +10,28 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Step 1: Checkout your project into the 'main-repo' directory.
+      # Step 1: Checkout your project into a sub-directory.
       - name: Checkout Project Repository
         uses: actions/checkout@v4
         with:
           path: main-repo
 
-      # Step 2: Manually clone the vcpkg repository into the 'vcpkg' directory.
+      # Step 2: Clone the vcpkg repository.
       - name: Clone vcpkg
         uses: actions/checkout@v4
         with:
           repository: microsoft/vcpkg
           path: vcpkg
 
-      # Step 3: Run the vcpkg bootstrap script to compile the vcpkg tool.
+      # Step 3: Run the vcpkg bootstrap script to compile the tool.
       - name: Bootstrap vcpkg
         run: vcpkg/bootstrap-vcpkg.bat
         shell: cmd
 
-      # Step 4: Create the vcpkg.json manifest file inside your project directory.
-      - name: Create vcpkg.json for d3dx9 dependency
-        run: |
-          echo '{ "dependencies": [ "d3dx9" ], "builtin-baseline": "34de2155b9534a69620719462785501d51a6669c" }' > main-repo/vcpkg.json
-        shell: pwsh
+      # Step 4: Use vcpkg to install the d3dx9 library for the x86 platform.
+      - name: Install d3dx9 via vcpkg
+        run: vcpkg/vcpkg.exe install d3dx9:x86-windows
+        shell: cmd
 
       # Step 5: Patch the source code to fix the missing C++ header.
       - name: Patch Common.hpp to include <chrono>
@@ -41,22 +40,22 @@ jobs:
           "#include <chrono>`n$content" | Set-Content -Path main-repo/Common.hpp -Force
         shell: pwsh
 
-      # Step 6: Set the VCPKG_ROOT environment variable.
-      # THE FIX: This explicitly tells MSBuild where to find vcpkg.
-      - name: Set VCPKG_ROOT Environment Variable
-        run: echo "VCPKG_ROOT=$Env:GITHUB_WORKSPACE/vcpkg" >> $Env:GITHUB_ENV
-        shell: pwsh
-
-      # Step 7: Set up the MSBuild environment.
+      # Step 6: Set up the MSBuild environment.
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      # Step 8: Build the project. It will now successfully find and use vcpkg.
+      # Step 7: Build the project, explicitly passing the required paths.
+      # THE FIX: We are manually injecting the include and library directories.
       - name: Build the Solution
-        run: msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86 /p:VcpkgEnableManifest=true
+        run: |
+          $vcpkgRoot = Convert-Path ./vcpkg
+          $includePath = "$vcpkgRoot/installed/x86-windows/include"
+          $libPath = "$vcpkgRoot/installed/x86-windows/lib"
+          msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86 /p:AdditionalIncludeDirectories="$includePath" /p:AdditionalLibraryDirectories="$libPath"
         working-directory: ./main-repo
+        shell: pwsh
 
-      # Step 9: Upload the final .dll file as a downloadable artifact.
+      # Step 8: Upload the final .dll file as a downloadable artifact.
       - name: Upload Cheat DLL
         uses: actions/upload-artifact@v4
         with:
