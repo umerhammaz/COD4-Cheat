@@ -14,17 +14,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up MSBuild (the Visual Studio build tool)
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1.1
+      # Step 2: Create a vcpkg manifest to declare dependencies
+      # THE FIX for d3dx9.h: We tell vcpkg that our project needs the d3dx9 library.
+      - name: Create vcpkg.json
+        run: echo '{ "dependencies": [ "d3dx9" ] }' > vcpkg.json
 
-      # Step 3: Build the Visual Studio solution
-      # We target the .sln file directly in Release mode for the x86 platform.
+      # Step 3: Run vcpkg to install the declared dependencies
+      # This action will download, build, and integrate d3dx9 automatically.
+      - name: Install Dependencies via vcpkg
+        uses: microsoft/vcpkg-action@v5
+        with:
+          vcpkgDirectory: ${{ runner.tool_cache }}/vcpkg
+          vcpkgJsonGlob: '**/vcpkg.json'
+
+      # Step 4: Patch the source code to fix the missing header
+      # THE FIX for chrono_literals: We add the missing #include to Common.hpp.
+      - name: Patch Common.hpp to include <chrono>
+        run: |
+          $content = Get-Content -Path Common.hpp -Raw
+          "#include <chrono>`n$content" | Set-Content -Path Common.hpp -Force
+        shell: pwsh
+
+      # Step 5: Build the Visual Studio solution
+      # MSBuild will now automatically find the d3dx9 library provided by vcpkg.
       - name: Build the Solution
         run: msbuild.exe "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86
 
-      # Step 4: Upload the compiled .dll as a downloadable artifact
-      # The output DLL is typically found in the "Release" folder for an x86 build.
+      # Step 6: Upload the compiled .dll as a downloadable artifact
       - name: Upload Cheat DLL
         uses: actions/upload-artifact@v4
         with:
