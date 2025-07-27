@@ -1,4 +1,3 @@
-# Version 2 - Final Build
 name: Build COD4 Cheat
 
 on:
@@ -14,9 +13,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Create a manifest file to declare the d3dx9 dependency
-      - name: Create vcpkg.json for d3dx9 dependency
-        run: echo '{ "dependencies": [ "d3dx9" ] }' > vcpkg.json
+      # Step 2: Create a vcpkg.json manifest for the d3dx9 dependency
+      # THIS STEP IS FIXED: Using a literal block to prevent YAML syntax errors.
+      - name: Create vcpkg.json
+        run: |
+          echo '{ "dependencies": [ "d3dx9" ] }' > vcpkg.json
 
       # Step 3: Use vcpkg to automatically install d3dx9
       - name: Install Dependencies via vcpkg
