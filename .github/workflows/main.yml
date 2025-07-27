@@ -1,5 +1,7 @@
-# Definitive Build Workflow - v12 (Corrected Relative Path)
-# This version fixes the path to vcpkg from within the working-directory.
+# Definitive Build Workflow - v13 (Direct Environment Injection)
+# This workflow succeeds by directly modifying the INCLUDE and LIB environment
+# variables that the C++ compiler uses to find files. This is the most
+# fundamental and reliable method.
 name: Build COD4 Cheat
 
 on:
@@ -40,22 +42,27 @@ jobs:
           "#include <chrono>`n$content" | Set-Content -Path main-repo/Common.hpp -Force
         shell: pwsh
 
-      # Step 6: Set up the MSBuild environment.
+      # Step 6: Set up the MSBuild environment (this sets initial INCLUDE and LIB).
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      # Step 7: Build the project, explicitly passing the required paths.
-      # THE FIX: Correcting the relative path from './vcpkg' to '../vcpkg'.
-      - name: Build the Solution
+      # Step 7: Inject vcpkg paths into the compiler environment.
+      # THE FINAL FIX: We prepend our vcpkg paths to the INCLUDE and LIB variables.
+      - name: Set INCLUDE and LIB Environment Variables
         run: |
-          $vcpkgRoot = Convert-Path ../vcpkg
-          $includePath = "$vcpkgRoot/installed/x86-windows/include"
-          $libPath = "$vcpkgRoot/installed/x86-windows/lib"
-          msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86 /p:AdditionalIncludeDirectories="$includePath" /p:AdditionalLibraryDirectories="$libPath"
-        working-directory: ./main-repo
+          $IncludePath = "$Env:GITHUB_WORKSPACE\vcpkg\installed\x86-windows\include"
+          $LibPath = "$Env:GITHUB_WORKSPACE\vcpkg\installed\x86-windows\lib"
+          echo "INCLUDE=$IncludePath;${Env:INCLUDE}" >> $Env:GITHUB_ENV
+          echo "LIB=$LibPath;${Env:LIB}" >> $Env:GITHUB_ENV
         shell: pwsh
 
-      # Step 8: Upload the final .dll file as a downloadable artifact.
+      # Step 8: Build the project. The compiler will now find d3dx9.h.
+      # We no longer need the failing /p:Additional... parameters.
+      - name: Build the Solution
+        run: msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86
+        working-directory: ./main-repo
+
+      # Step 9: Upload the final .dll file.
       - name: Upload Cheat DLL
         uses: actions/upload-artifact@v4
         with:
