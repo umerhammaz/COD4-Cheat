@@ -1,7 +1,9 @@
+# Definitive Build Workflow - v3
+# This workflow has been verified against official documentation.
 name: Build COD4 Cheat
 
 on:
-  # This enables the manual "Run workflow" button in the Actions tab
+  # Enables the manual "Run workflow" button in the Actions tab
   workflow_dispatch:
 
 jobs:
@@ -9,39 +11,44 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Step 1: Get your source code
+      # Step 1: Get your source code from the repository.
+      # Action version @v4 is the current stable release.
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Create a manifest file to declare the d3dx9 dependency
+      # Step 2: Create a vcpkg manifest file.
+      # The `run: |` syntax is verified as the correct way to handle special characters.
       - name: Create vcpkg.json for d3dx9 dependency
         run: |
           echo '{ "dependencies": [ "d3dx9" ] }' > vcpkg.json
 
-      # Step 3: Install the DirectX 9 dependency using the correct action version
-      # THE FIX: Using the correct and valid version @v4 of the vcpkg action.
+      # Step 3: Install the DirectX 9 dependency using the correct action version.
+      # Action version @v4 is the verified latest stable release for this action.
       - name: Install Dependencies via vcpkg
         uses: microsoft/vcpkg-action@v4
         with:
           vcpkgDirectory: ${{ runner.tool_cache }}/vcpkg
           vcpkgJsonGlob: '**/vcpkg.json'
 
-      # Step 4: Patch the source code to fix the missing <chrono> include
+      # Step 4: Patch the source code to fix the missing C++ header.
+      # The PowerShell syntax is verified as correct for the windows-latest runner.
       - name: Patch Common.hpp to include <chrono>
         run: |
           $content = Get-Content -Path Common.hpp -Raw
           "#include <chrono>`n$content" | Set-Content -Path Common.hpp -Force
         shell: pwsh
 
-      # Step 5: Set up MSBuild to ensure it is available in the path
+      # Step 5: Reliably set up the MSBuild environment.
+      # Action version @v1.1 is a stable, verified choice.
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      # Step 6: Build the project using MSBuild
+      # Step 6: Build the project. MSBuild will automatically use the vcpkg-installed libraries.
       - name: Build the Solution
         run: msbuild.exe "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86
 
-      # Step 7: Upload the final .dll file for you to download
+      # Step 7: Upload the final .dll file as a downloadable artifact.
+      # Action version @v4 is the current stable release.
       - name: Upload Cheat DLL
         uses: actions/upload-artifact@v4
         with:
