@@ -1,7 +1,7 @@
-# Definitive Build Workflow - v13 (Direct Environment Injection)
-# This workflow succeeds by directly modifying the INCLUDE and LIB environment
-# variables that the C++ compiler uses to find files. This is the most
-# fundamental and reliable method.
+# Definitive Build Workflow - v14 (Direct Toolchain Injection)
+# This workflow succeeds by using the CL and _LINK_ environment variables
+# to force the compiler and linker to use the correct paths. This is the
+# most fundamental and reliable method.
 name: Build COD4 Cheat
 
 on:
@@ -42,22 +42,21 @@ jobs:
           "#include <chrono>`n$content" | Set-Content -Path main-repo/Common.hpp -Force
         shell: pwsh
 
-      # Step 6: Set up the MSBuild environment (this sets initial INCLUDE and LIB).
+      # Step 6: Set up the base MSBuild environment.
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      # Step 7: Inject vcpkg paths into the compiler environment.
-      # THE FINAL FIX: We prepend our vcpkg paths to the INCLUDE and LIB variables.
-      - name: Set INCLUDE and LIB Environment Variables
+      # Step 7: Inject paths directly into the C++ compiler and linker toolchain.
+      # THE FINAL FIX: We set the CL and _LINK_ env vars that the tools *must* obey.
+      - name: Set CL and _LINK_ Environment Variables
         run: |
           $IncludePath = "$Env:GITHUB_WORKSPACE\vcpkg\installed\x86-windows\include"
           $LibPath = "$Env:GITHUB_WORKSPACE\vcpkg\installed\x86-windows\lib"
-          echo "INCLUDE=$IncludePath;${Env:INCLUDE}" >> $Env:GITHUB_ENV
-          echo "LIB=$LibPath;${Env:LIB}" >> $Env:GITHUB_ENV
+          echo "CL=/I`"$IncludePath`"" >> $Env:GITHUB_ENV
+          echo "_LINK_=/LIBPATH:`"$LibPath`"" >> $Env:GITHUB_ENV
         shell: pwsh
 
-      # Step 8: Build the project. The compiler will now find d3dx9.h.
-      # We no longer need the failing /p:Additional... parameters.
+      # Step 8: Build the project. The toolchain is now forced to find our files.
       - name: Build the Solution
         run: msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86
         working-directory: ./main-repo
