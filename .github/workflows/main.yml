@@ -1,4 +1,4 @@
-# Definitive Build Workflow - v9 (Correct Path Separators)
+# Definitive Build Workflow - v10 (Correct Package Name)
 name: Build COD4 Cheat
 
 on:
@@ -22,16 +22,15 @@ jobs:
           repository: microsoft/vcpkg
           path: vcpkg
 
-      # Step 3: Run the vcpkg bootstrap script.
-      # THE FIX: Using the correct Windows path separator '\' for the cmd shell.
+      # Step 3: Run the vcpkg bootstrap script to build the tool.
       - name: Bootstrap vcpkg
         run: vcpkg\bootstrap-vcpkg.bat
         shell: cmd
 
-      # Step 4: Use vcpkg to install the d3dx9 library.
-      # THE FIX: Using the correct Windows path separator '\' for the cmd shell.
-      - name: Install d3dx9 via vcpkg
-        run: vcpkg\vcpkg.exe install d3dx9:x86-windows
+      # Step 4: Use vcpkg to install the DirectX SDK.
+      # THE FINAL FIX: Using the correct package name 'directx-sdk'.
+      - name: Install DirectX SDK via vcpkg
+        run: vcpkg\vcpkg.exe install directx-sdk:x86-windows
         shell: cmd
 
       # Step 5: Patch the source code to fix the missing C++ header.
