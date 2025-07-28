@@ -18,12 +18,31 @@ jobs:
       with:
         submodules: 'recursive'
 
-    # CORRECTED STEP: Using a verified and publicly available action.
-    # The previous action identifier was invalid. This one resolves correctly.
-    - name: Install DirectX SDK
-      uses: GRDigital/directx-sdk-action@v1
-      with:
-        platform: 'x86'
+    # REVISED STEP: Install the legacy DirectX SDK manually via PowerShell
+    # This removes the dependency on third-party actions which were failing to resolve.
+    - name: Install DirectX SDK (Manual)
+      run: |
+        echo "[INFO] Starting manual DirectX SDK installation."
+        $sdkUrl = "https://download.microsoft.com/download/A/E/7/AE743F36-63F5-4D8A-8752-5B8B70AF1959/DXSDK_June2010.exe"
+        $sdkDest = "$env:TEMP\DXSDK_June2010.exe"
+        
+        echo "[INFO] Downloading DirectX SDK from $sdkUrl"
+        Invoke-WebRequest -Uri $sdkUrl -OutFile $sdkDest
+        
+        echo "[INFO] Installing DirectX SDK silently. This will take a moment..."
+        Start-Process -FilePath $sdkDest -ArgumentList "/U" -Wait -Passthru
+        
+        echo "[INFO] Configuring environment variables for subsequent steps."
+        $sdkDir = "C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)"
+        $includePath = "$sdkDir\Include"
+        $libPath = "$sdkDir\Lib\x86"
+        
+        # This is the correct way to set an env var for the rest of the job.
+        echo "INCLUDE=$env:INCLUDE;$includePath" >> $env:GITHUB_ENV
+        echo "LIB=$env:LIB;$libPath" >> $env:GITHUB_ENV
+        
+        echo "[SUCCESS] DirectX SDK setup complete. Include and Lib paths set."
+      shell: pwsh
 
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
@@ -33,6 +52,8 @@ jobs:
     - name: Build Solution
       run: |
         echo "[INFO] Starting MSBuild for DX9-Cheat-Base.sln with platform x86"
+        echo "[INFO] Current INCLUDE path: ${{ env.INCLUDE }}"
+        echo "[INFO] Current LIB path: ${{ env.LIB }}"
         msbuild.exe "DX9-Cheat-Base.sln" -p:Configuration=Release -p:Platform=x86
         echo "[SUCCESS] MSBuild finished."
 
