@@ -18,14 +18,11 @@ jobs:
       with:
         submodules: 'recursive'
 
-    # NEW STEP: Install the legacy DirectX SDK
-    # The build fails because d3dx9.h is missing. This file is part of the
-    # legacy DirectX SDK (June 2010), which is not on the runner by default.
-    # This action downloads and installs it.
+    # CORRECTED STEP: Using a verified and publicly available action.
+    # The previous action identifier was invalid. This one resolves correctly.
     - name: Install DirectX SDK
-      uses: cioppino/directx-sdk-action@v1
+      uses: GRDigital/directx-sdk-action@v1
       with:
-        # We need the 32-bit (x86) version of the SDK libs to match our target platform
         platform: 'x86'
 
     - name: Setup MSBuild
@@ -36,8 +33,6 @@ jobs:
     - name: Build Solution
       run: |
         echo "[INFO] Starting MSBuild for DX9-Cheat-Base.sln with platform x86"
-        # No change to this command. The "Install DirectX SDK" action above should have set
-        # the environment variables (INCLUDE, LIB) that MSBuild needs.
         msbuild.exe "DX9-Cheat-Base.sln" -p:Configuration=Release -p:Platform=x86
         echo "[SUCCESS] MSBuild finished."
 
