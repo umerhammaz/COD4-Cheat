@@ -1,65 +1,53 @@
-# Definitive Build Workflow - v15 (Correct Order of Operations)
-# This workflow is guaranteed to succeed by establishing the build environment
-# first, then amending it with our custom paths, preventing any overwrites.
-name: Build COD4 Cheat
+# .github/workflows/build.yml
 
+name: Build C++ Project
+
+# Controls when the action will run. 
+# Triggers the workflow on push or pull request events but only for the "main" branch.
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
+    # The type of runner that the job will run on
     runs-on: windows-latest
 
     steps:
-      # Step 1 & 2: Get the required source code.
-      - name: Checkout Project Repository
-        uses: actions/checkout@v4
-        with:
-          path: main-repo
-      - name: Clone vcpkg
-        uses: actions/checkout@v4
-        with:
-          repository: microsoft/vcpkg
-          path: vcpkg
+    # Step 1: Check out the repository code so the runner can access it
+    - name: Check out repository
+      uses: actions/checkout@v4
+      with:
+        # The repository contains submodules (MinHook), so we need to fetch them too.
+        submodules: 'recursive'
 
-      # Step 3 & 4: Prepare the vcpkg dependency.
-      - name: Bootstrap vcpkg
-        run: vcpkg\bootstrap-vcpkg.bat
-        shell: cmd
-      - name: Install dxsdk-d3dx via vcpkg
-        run: vcpkg\vcpkg.exe install dxsdk-d3dx:x86-windows
-        shell: cmd
+    # Step 2: Set up MSBuild environment
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      with:
+        # Specifies the Visual Studio version. 
+        # The README calls for VS 2022, so 'latest' is appropriate.
+        vs-version: 'latest'
 
-      # Step 5: Patch the game cheat's source code.
-      - name: Patch Common.hpp to include <chrono>
-        run: |
-          $content = Get-Content -Path main-repo/Common.hpp -Raw
-          "#include <chrono>`n$content" | Set-Content -Path main-repo/Common.hpp -Force
-        shell: pwsh
+    # Step 3: Build the Visual Studio solution
+    - name: Build Solution
+      run: |
+        echo "[INFO] Starting MSBuild for DX9-Cheat-Base.sln"
+        # Execute MSBuild on the solution file.
+        # -p:Configuration=Release -> Builds the Release version.
+        # -p:Platform=Win32       -> Builds for the 32-bit (x86) platform. Change to x64 if needed.
+        msbuild.exe "DX9-Cheat-Base.sln" -p:Configuration=Release -p:Platform=Win32
+        echo "[SUCCESS] MSBuild finished."
 
-      # Step 6: Set up the BASE Visual Studio build environment.
-      # This runs FIRST to establish the default INCLUDE and LIB paths.
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1.1
-
-      # Step 7: Prepend the vcpkg paths to the NOW-EXISTING environment variables.
-      # THE FINAL FIX: This layering approach prevents our paths from being erased.
-      - name: Set INCLUDE and LIB Environment Variables
-        run: |
-          $IncludePath = "$Env:GITHUB_WORKSPACE\vcpkg\installed\x86-windows\include"
-          $LibPath = "$Env:GITHUB_WORKSPACE\vcpkg\installed\x86-windows\lib"
-          echo "INCLUDE=$IncludePath;${Env:INCLUDE}" >> $Env:GITHUB_ENV
-          echo "LIB=$LibPath;${Env:LIB}" >> $Env:GITHUB_ENV
-        shell: pwsh
-
-      # Step 8: Build the project. The compiler will now have the correct, full paths.
-      - name: Build the Solution
-        run: msbuild "DX9-Cheat-Base.sln" /p:Configuration=Release /p:Platform=x86
-        working-directory: ./main-repo
-
-      # Step 9: Upload the final .dll for download.
-      - name: Upload Cheat DLL
-        uses: actions/upload-artifact@v4
-        with:
-          name: Built-Cheat-DLL
-          path: main-repo/Release/DX9-Cheat-Base.dll
+    # Step 4: Upload the compiled binary as a workflow artifact
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        # The name of the artifact as it will appear in the GitHub UI.
+        name: COD4-Cheat-Release-DLL
+        # The path to the file(s) to upload.
+        # This path might need adjustment if the project settings are different.
+        # It's typically located in `Release/` or `x86/Release/`.
+        path: Release/DX9-Cheat-Base.dll
