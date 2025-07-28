@@ -18,18 +18,19 @@ jobs:
       with:
         submodules: 'recursive'
 
-    # REVISED STEP: Install the legacy DirectX SDK manually via PowerShell
-    # This removes the dependency on third-party actions which were failing to resolve.
     - name: Install DirectX SDK (Manual)
       run: |
         echo "[INFO] Starting manual DirectX SDK installation."
-        $sdkUrl = "https://download.microsoft.com/download/A/E/7/AE743F36-63F5-4D8A-8752-5B8B70AF1959/DXSDK_June2010.exe"
-        $sdkDest = "$env:TEMP\DXSDK_June2010.exe"
+        # The official Microsoft download link is dead (404). 
+        # Using a reliable mirror from the Internet Archive, which is a common practice for legacy installers.
+        $sdkUrl = "https://archive.org/download/dxsdk_jun10/DXSDK_Jun10.exe"
+        $sdkDest = "$env:TEMP\DXSDK_Jun10.exe"
         
         echo "[INFO] Downloading DirectX SDK from $sdkUrl"
         Invoke-WebRequest -Uri $sdkUrl -OutFile $sdkDest
         
         echo "[INFO] Installing DirectX SDK silently. This will take a moment..."
+        # NOTE: The installer from archive.org is named DXSDK_Jun10.exe, not DXSDK_June2010.exe
         Start-Process -FilePath $sdkDest -ArgumentList "/U" -Wait -Passthru
         
         echo "[INFO] Configuring environment variables for subsequent steps."
@@ -37,7 +38,6 @@ jobs:
         $includePath = "$sdkDir\Include"
         $libPath = "$sdkDir\Lib\x86"
         
-        # This is the correct way to set an env var for the rest of the job.
         echo "INCLUDE=$env:INCLUDE;$includePath" >> $env:GITHUB_ENV
         echo "LIB=$env:LIB;$libPath" >> $env:GITHUB_ENV
         
